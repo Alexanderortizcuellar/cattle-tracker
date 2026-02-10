@@ -398,8 +398,15 @@
                   </div>
                   <v-row dense>
                     <v-col cols="12" md="6">
-                      <v-text-field
-                        v-model="formData.buyer_name"
+                      <v-select
+                        v-model="formData.buyerId"
+                        :items="
+                          contactsStore.contacts.filter(
+                            (c) => c.type === 'Comprador',
+                          )
+                        "
+                        item-title="name"
+                        item-value="id"
                         label="Comprador *"
                         :rules="[
                           rules.requiredIfStatus(
@@ -520,6 +527,20 @@
                   ></v-select>
                 </v-col>
                 <v-col cols="12">
+                  <v-select
+                    v-if="formData.acquisition_type === 'Compra'"
+                    v-model="formData.sellerId"
+                    :items="
+                      contactsStore.contacts.filter(
+                        (c) => c.type === 'Vendedor',
+                      )
+                    "
+                    item-title="name"
+                    item-value="id"
+                    label="Vendedor"
+                  ></v-select>
+                </v-col>
+                <v-col cols="12">
                   <v-text-field
                     v-model="formData.acquisition_date"
                     label="Fecha Adquisición"
@@ -582,6 +603,7 @@ import { useDisplay } from "vuetify"; // Importante para responsive
 import Papa from "papaparse";
 import { useLivestockStore } from "../stores/livestock";
 import { useBreedsStore } from "../stores/breeds";
+import { useContactsStore } from "../stores/contacts";
 import type { Animal } from "../types";
 
 // UTILIDADES RESPONSIVE
@@ -664,11 +686,12 @@ async function insertBulkToFirestore(data: any[]) {
         acquisition_type: row.acquisition_type || "Compra",
         acquisition_date: row.acquisition_date || "",
         acquisition_price: Number(row.acquisition_price) || 0,
+        sellerId: row.sellerId || "",
         status: row.status || "Activo",
         notes: row.notes || "",
 
         // 🆕 CAMPOS DE VENTA (Añadidos en la solicitud anterior)
-        buyer_name: row.buyer_name || "",
+        buyerId: row.buyerId || "",
         sale_price: Number(row.sale_price) || 0,
 
         // 🆕 CAMPOS DECESO (Añadidos en la solicitud anterior)
@@ -686,6 +709,7 @@ async function insertBulkToFirestore(data: any[]) {
 const isGeneratingName = ref(false);
 const livestockStore = useLivestockStore();
 const breedsStore = useBreedsStore();
+const contactsStore = useContactsStore();
 
 const search = ref("");
 const filterBreed = ref("");
@@ -699,6 +723,8 @@ const form = ref();
 
 onMounted(() => {
   livestockStore.loadAnimals();
+  breedsStore.loadBreeds();
+  contactsStore.loadContacts();
 });
 
 const formData = ref<Animal>({
@@ -711,10 +737,11 @@ const formData = ref<Animal>({
   acquisition_type: "Compra",
   acquisition_date: "",
   acquisition_price: 0,
+  sellerId: "",
   status: "Activo",
   notes: "",
   // CAMPOS DE VENTA
-  buyer_name: "",
+  buyerId: "",
   sale_price: 0,
   // 🆕 CAMPOS DECESO
   death_reason: "",
@@ -836,6 +863,7 @@ const openDialog = (animal?: Animal) => {
       date_of_birth: "",
       breed: "",
       acquisition_type: "Compra",
+      sellerId: "",
       acquisition_date: "",
       acquisition_price: 0,
       status: "Activo",

@@ -7,13 +7,14 @@ export interface Animal {
   date_of_birth: string
   breed: string
   acquisition_type: 'Compra' | 'Nacimiento' | 'Donación' | 'Negocio'
+  sellerId?: string
   acquisition_date: string
   acquisition_price: number
   status: 'Activo' | 'Vendido' | 'Muerto'
   sale_price?: number
   notes?: string
   updated_at?: string
-  buyer_name?: string
+  buyerId?: string
   death_reason?: string
   death_date?: string
   motherId?: string | number | null
