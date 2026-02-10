@@ -12,6 +12,7 @@ export interface Animal {
   acquisition_price: number
   status: 'Activo' | 'Vendido' | 'Muerto'
   sale_price?: number
+  sale_date?: string
   notes?: string
   updated_at?: string
   buyerId?: string

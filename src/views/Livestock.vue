@@ -438,6 +438,24 @@
                       />
                     </v-col>
                   </v-row>
+                  <v-row dense>
+                    <v-col cols="12">
+                      <v-text-field
+                        v-model="formData.sale_date"
+                        label="Fecha de venta *"
+                        type="date"
+                        :rules="[
+                          rules.requiredIfStatus(
+                            'Vendido',
+                            'Este campo es obligatorio si está vendido',
+                          ),
+                        ]"
+                        variant="outlined"
+                        density="comfortable"
+                        bg-color="white"
+                      />
+                    </v-col>
+                  </v-row>
                 </v-card>
               </div>
             </v-expand-transition>
@@ -692,6 +710,7 @@ async function insertBulkToFirestore(data: any[]) {
 
         // 🆕 CAMPOS DE VENTA (Añadidos en la solicitud anterior)
         buyerId: row.buyerId || "",
+        sale_date: row.sale_date || "",
         sale_price: Number(row.sale_price) || 0,
 
         // 🆕 CAMPOS DECESO (Añadidos en la solicitud anterior)
@@ -742,6 +761,7 @@ const formData = ref<Animal>({
   notes: "",
   // CAMPOS DE VENTA
   buyerId: "",
+  sale_date: "",
   sale_price: 0,
   // 🆕 CAMPOS DECESO
   death_reason: "",
