@@ -186,7 +186,7 @@
               elevation="1"
               rounded="lg"
               hover
-              @click="openDialog(animal)"
+              @click="$router.push(`/livestock/${animal.id}`)"
             >
               <div
                 class="d-flex justify-space-between align-center pa-3 bg-white"
@@ -507,7 +507,9 @@
                 Adquisición
               </div>
               <v-row dense>
-                <v-col cols="6">
+                <v-col
+                  :cols="formData.acquisition_type === 'Nacimiento' ? 12 : 6"
+                >
                   <v-select
                     v-model="formData.acquisition_type"
                     label="Tipo"
@@ -519,7 +521,10 @@
                   />
                 </v-col>
 
-                <v-col cols="6">
+                <v-col
+                  cols="6"
+                  v-if="formData.acquisition_type !== 'Nacimiento'"
+                >
                   <v-text-field
                     v-model.number="formData.acquisition_price"
                     label="Costo"
@@ -531,9 +536,8 @@
                     bg-color="white"
                   />
                 </v-col>
-                <v-col cols="12">
+                <v-col cols="12" v-if="formData.acquisition_type === 'Nacimiento'">
                   <v-select
-                    v-if="formData.acquisition_type === 'Nacimiento'"
                     v-model="formData.motherId"
                     :items="
                       livestockStore.animals.filter((a) => a.sex === 'Hembra')
@@ -542,11 +546,13 @@
                     item-value="id"
                     label="Madre"
                     :rules="[rules.requiredIfMother]"
+                    variant="outlined"
+                    density="comfortable"
+                    bg-color="white"
                   ></v-select>
                 </v-col>
-                <v-col cols="12">
+                <v-col cols="12" v-if="formData.acquisition_type === 'Compra'">
                   <v-select
-                    v-if="formData.acquisition_type === 'Compra'"
                     v-model="formData.sellerId"
                     :items="
                       contactsStore.contacts.filter(
@@ -556,9 +562,15 @@
                     item-title="name"
                     item-value="id"
                     label="Vendedor"
+                    variant="outlined"
+                    density="comfortable"
+                    bg-color="white"
                   ></v-select>
                 </v-col>
-                <v-col cols="12">
+                <v-col
+                  cols="12"
+                  v-if="formData.acquisition_type !== 'Nacimiento'"
+                >
                   <v-text-field
                     v-model="formData.acquisition_date"
                     label="Fecha Adquisición"
@@ -815,6 +827,16 @@ watch(
   (newSex, oldSex) => {
     if (!editMode.value && newSex !== oldSex) {
       generateName();
+    }
+  },
+);
+
+watch(
+  () => [formData.value.acquisition_type, formData.value.date_of_birth],
+  ([type, birthDate]) => {
+    if (type === "Nacimiento") {
+      formData.value.acquisition_date = birthDate as string;
+      formData.value.acquisition_price = 0;
     }
   },
 );

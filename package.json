@@ -10,13 +10,13 @@
   },
   "dependencies": {
     "@mdi/font": "^7.4.47",
-    "chart.js": "^4.5.1",
+    "echarts": "^6.0.0",
     "firebase": "^12.5.0",
     "papaparse": "^5.5.3",
     "pinia": "^3.0.4",
     "recharts": "^3.4.1",
     "vue": "^3.4.38",
-    "vue-chartjs": "^5.3.3",
+    "vue-echarts": "^8.0.1",
     "vue-router": "^4.6.3",
     "vuetify": "^3.10.9"
   },
