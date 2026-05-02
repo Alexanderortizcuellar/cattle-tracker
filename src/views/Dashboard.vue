@@ -173,7 +173,6 @@
 import { ref, computed, onMounted, provide } from 'vue'
 import { useLivestockStore } from '../stores/livestock'
 import { useBreedsStore } from '../stores/breeds'
-import { useDisplay } from 'vuetify'
 
 // ECharts
 import { use } from 'echarts/core'
@@ -298,7 +297,7 @@ const cashFlowOption = computed(() => {
   
   const buyData = allMonths.map(m => -(buys[m] || 0))
   const sellData = allMonths.map(m => sells[m] || 0)
-  const profitData = allMonths.map((m, i) => (buys[m] || 0) === 0 && (sells[m] || 0) === 0 ? 0 : (sells[m] || 0) - (buys[m] || 0))
+  const profitData = allMonths.map((m, _) => (buys[m] || 0) === 0 && (sells[m] || 0) === 0 ? 0 : (sells[m] || 0) - (buys[m] || 0))
 
   return {
     tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },

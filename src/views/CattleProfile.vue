@@ -334,7 +334,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, provide } from 'vue';
+import { ref, computed, onMounted, provide } from 'vue';
 import { useRoute } from 'vue-router';
 import { useLivestockStore } from '../stores/livestock';
 import { useBreedsStore } from '../stores/breeds';
