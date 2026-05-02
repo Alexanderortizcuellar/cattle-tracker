@@ -20,7 +20,7 @@ export interface Animal {
   death_date?: string
   motherId?: string | number | null
 }
-
+ 
 
 export interface Breed {
   id?: string

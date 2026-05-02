@@ -77,6 +77,22 @@
             </v-list-item>
             <v-divider class="d-sm-none my-2"></v-divider>
             
+            <v-list-item @click="downloadAllData" density="compact">
+                <template v-slot:prepend>
+                    <v-icon icon="mdi-download" color="primary"></v-icon>
+                </template>
+                <v-list-item-title>Exportar Datos (JSON)</v-list-item-title>
+            </v-list-item>
+
+            <v-list-item @click="triggerImport" density="compact">
+                <template v-slot:prepend>
+                    <v-icon icon="mdi-upload" color="secondary"></v-icon>
+                </template>
+                <v-list-item-title>Importar Datos (JSON)</v-list-item-title>
+            </v-list-item>
+
+            <v-divider class="my-2"></v-divider>
+
             <v-list-item @click="logout" density="compact">
                 <template v-slot:prepend>
                     <v-icon icon="mdi-logout" color="error"></v-icon>
@@ -88,6 +104,14 @@
     </v-app-bar>
 
     <v-main class="bg-grey-lighten-4">
+      <!-- Input oculto para importación -->
+      <input
+        ref="fileInput"
+        type="file"
+        accept=".json"
+        style="display: none"
+        @change="handleImport"
+      />
       <v-container fluid>
         <router-view />
       </v-container>
@@ -96,14 +120,48 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify' // Importante para responsive
 import { useAuthStore } from '../stores/useAuthStore'
+import { useDataExport } from '../utils/dataExport'
+import { useDataImport } from '../utils/dataImport'
+import { useLivestockStore } from '../stores/livestock'
+import { useBreedsStore } from '../stores/breeds'
+import { useContactsStore } from '../stores/contacts'
 
 const authStore = useAuthStore()
 const route = useRoute()
 const router = useRouter()
+const { downloadAllData } = useDataExport()
+const { importData } = useDataImport()
+const livestockStore = useLivestockStore()
+const breedsStore = useBreedsStore()
+const contactsStore = useContactsStore()
+
+const fileInput = ref<HTMLInputElement | null>(null)
+
+const triggerImport = () => {
+  fileInput.value?.click()
+}
+
+const handleImport = async (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+
+  const result = await importData(file)
+  alert(result.message)
+  
+  // Clear input
+  target.value = ''
+}
+
+onMounted(() => {
+  livestockStore.loadAnimals()
+  breedsStore.loadBreeds()
+  contactsStore.loadContacts()
+})
 
 // 1. Hook de Vuetify para detectar tamaño de pantalla
 const { mobile } = useDisplay()
