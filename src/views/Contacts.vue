@@ -1,24 +1,33 @@
 <template>
   <div>
-    <v-card>
-      <v-card-title class="d-flex justify-space-between align-center">
-        <span>Gestión de Vendedores y Compradores</span>
-        <v-btn color="primary" @click="openDialog()">
-          <v-icon start>mdi-plus</v-icon>
-          Agregar Contacto
+    <v-row class="mb-4">
+      <v-col cols="12" class="d-flex justify-space-between align-center">
+        <h1 class="text-h4 font-weight-bold text-grey-darken-3">Contactos</h1>
+        <v-btn
+          color="primary"
+          @click="openDialog()"
+          prepend-icon="mdi-plus"
+          class="rounded-lg"
+        >
+          <span class="d-none d-sm-inline">Agregar Contacto</span>
+          <v-icon class="d-inline d-sm-none">mdi-plus</v-icon>
         </v-btn>
-      </v-card-title>
+      </v-col>
+    </v-row>
 
-      <v-card-text>
-        <v-row>
+    <v-card elevation="2" class="rounded-lg overflow-hidden">
+      <v-card-text class="pa-4">
+        <v-row dense class="mb-2">
           <v-col cols="12" md="8">
             <v-text-field
               v-model="search"
-              label="Buscar"
+              label="Buscar contactos..."
               prepend-inner-icon="mdi-magnify"
               variant="outlined"
               density="compact"
               clearable
+              hide-details
+              bg-color="white"
             ></v-text-field>
           </v-col>
           <v-col cols="12" md="4">
@@ -29,6 +38,8 @@
               variant="outlined"
               density="compact"
               clearable
+              hide-details
+              bg-color="white"
             ></v-select>
           </v-col>
         </v-row>
@@ -37,20 +48,31 @@
           :headers="headers"
           :items="filteredContacts"
           :search="search"
-          class="elevation-1"
+          hover
+          class="elevation-0 border rounded-lg"
         >
           <template v-slot:item.type="{ item }">
-            <v-chip :color="getTypeColor(item.type)" size="small">
+            <v-chip :color="getTypeColor(item.type)" size="x-small" label class="font-weight-bold">
               {{ item.type }}
             </v-chip>
           </template>
           <template v-slot:item.actions="{ item }">
-            <v-btn icon size="small" @click="openDialog(item)" class="mr-2">
-              <v-icon>mdi-pencil</v-icon>
-            </v-btn>
-            <v-btn icon size="small" color="error" @click="confirmDelete(item)">
-              <v-icon>mdi-delete</v-icon>
-            </v-btn>
+            <div class="d-flex ga-1 justify-end">
+              <v-btn
+                icon="mdi-pencil"
+                variant="text"
+                color="primary"
+                size="x-small"
+                @click="openDialog(item)"
+              ></v-btn>
+              <v-btn
+                icon="mdi-delete"
+                variant="text"
+                color="error"
+                size="x-small"
+                @click="confirmDelete(item)"
+              ></v-btn>
+            </div>
           </template>
         </v-data-table>
       </v-card-text>

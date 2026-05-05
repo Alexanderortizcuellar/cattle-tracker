@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import type { Animal } from '../types'
-import { ref, onUnmounted } from 'vue'
+import { ref } from 'vue'
 import { db } from '../firebase'
 import {
   collection,
@@ -18,8 +18,20 @@ export const useLivestockStore = defineStore('livestock', () => {
   const animals = ref<Animal[]>([])
   let unsubscribe: Unsubscribe | null = null
 
+  const filters = ref({
+    search: '',
+    breed: '',
+    sex: '',
+    status: '',
+    feedingStage: '',
+    showFilters: false,
+    viewMode: 'grid' as 'grid' | 'table'
+  })
+
   // --- 🔥 Cargar animales (suscripción en tiempo real) ---
   const loadAnimals = () => {
+    if (unsubscribe) return
+
     const q = query(animalsCol)
     unsubscribe = onSnapshot(q, (snapshot) => {
       animals.value = snapshot.docs.map((d) => ({
@@ -31,7 +43,8 @@ export const useLivestockStore = defineStore('livestock', () => {
 
   // --- 💾 Agregar un nuevo animal ---
   const addAnimal = async (animal: Animal) => {
-    await addDoc(animalsCol, animal)
+    const docRef = await addDoc(animalsCol, animal)
+    return docRef.id
   }
 
   // --- ✏️ Actualizar un animal ---
@@ -49,13 +62,9 @@ export const useLivestockStore = defineStore('livestock', () => {
     await deleteDoc(animalRef)
   }
 
-  // --- 🧹 Cancelar suscripción al desmontar ---
-  onUnmounted(() => {
-    if (unsubscribe) unsubscribe()
-  })
-
   return {
     animals,
+    filters,
     loadAnimals,
     addAnimal,
     updateAnimal,

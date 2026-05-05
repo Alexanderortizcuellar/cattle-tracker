@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, onUnmounted } from 'vue'
+import { ref } from 'vue'
 import type { Contact } from '../types'
 import { db } from '../firebase'
 import {
@@ -20,7 +20,7 @@ export const useContactsStore = defineStore('contacts', () => {
 
   // 🔥 Load contacts (realtime)
   const loadContacts = () => {
-    if (unsubscribe) unsubscribe()
+    if (unsubscribe) return
 
     const q = query(contactsCol)
     unsubscribe = onSnapshot(q, (snapshot) => {
@@ -29,7 +29,6 @@ export const useContactsStore = defineStore('contacts', () => {
         ...(d.data() as Contact),
       }))
     })
-    console.log(["contacts.value", contacts])
   }
 
   // 💾 Add contact
@@ -49,14 +48,8 @@ export const useContactsStore = defineStore('contacts', () => {
   // 🗑️ Delete contact
   const deleteContact = async (id: string) => {
     const contactRef = doc(db, 'contacts', id)
-    console.log(["contactRef", contactRef])
     await deleteDoc(contactRef)
   }
-
-  // 🧹 Cleanup
-  onUnmounted(() => {
-    if (unsubscribe) unsubscribe()
-  })
 
   return {
     contacts,

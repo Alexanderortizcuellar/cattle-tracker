@@ -4,6 +4,7 @@ import Livestock from '../views/Livestock.vue'
 import CattleProfile from '../views/CattleProfile.vue'
 import Breeds from '../views/Breeds.vue'
 import Contacts from '../views/Contacts.vue'
+import Expenses from '../views/Expenses.vue'
 import Login from '../views/Login.vue'
 import { useAuthStore } from '../stores/useAuthStore'
 import { watch } from 'vue'
@@ -15,6 +16,7 @@ const routes: Array<RouteRecordRaw> = [
   { path: '/livestock/:id', name: 'CattleProfile', component: CattleProfile, meta: { requiresAuth: true } },
   { path: '/breeds', name: 'Breeds', component: Breeds, meta: { requiresAuth: true } },
   { path: '/contacts', name: 'Contacts', component: Contacts, meta: { requiresAuth: true } },
+  { path: '/expenses', name: 'Expenses', component: Expenses, meta: { requiresAuth: true } },
 ]
 
 const router = createRouter({

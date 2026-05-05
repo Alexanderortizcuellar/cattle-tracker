@@ -9,7 +9,7 @@
             prepend-icon="mdi-arrow-left"
             @click="$router.push('/livestock')"
           >
-            Volver a Ganado
+            Volver
           </v-btn>
           <v-spacer></v-spacer>
           <v-btn
@@ -17,7 +17,7 @@
             prepend-icon="mdi-pencil"
             @click="openEditDialog"
           >
-            Editar Perfil
+            Editar
           </v-btn>
         </div>
         
@@ -191,6 +191,14 @@
                 <div class="text-caption text-grey mt-1">
                   {{ animal.acquisition_type }} el {{ animal.acquisition_date }}
                 </div>
+                <div v-if="seller" class="mt-4">
+                  <v-divider class="mb-2"></v-divider>
+                  <div class="text-caption text-grey">Vendedor</div>
+                  <div class="text-subtitle-2 font-weight-bold">{{ seller.name }}</div>
+                  <div class="text-caption d-flex align-center" v-if="seller.phone">
+                    <v-icon size="14" class="mr-1" color="grey">mdi-phone</v-icon>{{ seller.phone }}
+                  </div>
+                </div>
               </v-col>
               <v-col cols="12" sm="4" v-if="animal.status === 'Vendido'">
                 <div class="text-caption text-grey">Precio de Venta</div>
@@ -199,6 +207,14 @@
                 </div>
                 <div class="text-caption text-grey mt-1">
                   Vendido el {{ animal.sale_date }}
+                </div>
+                <div v-if="buyer" class="mt-4">
+                  <v-divider class="mb-2"></v-divider>
+                  <div class="text-caption text-grey">Comprador</div>
+                  <div class="text-subtitle-2 font-weight-bold">{{ buyer.name }}</div>
+                  <div class="text-caption d-flex align-center" v-if="buyer.phone">
+                    <v-icon size="14" class="mr-1" color="grey">mdi-phone</v-icon>{{ buyer.phone }}
+                  </div>
                 </div>
               </v-col>
               <v-col cols="12" sm="4" v-if="animal.status === 'Vendido'">
@@ -268,64 +284,13 @@
       </v-col>
     </v-row>
 
-    <!-- Edit Dialog -->
-    <v-dialog v-model="editDialog" max-width="800px">
-      <v-card>
-        <v-toolbar color="white" elevation="1">
-          <v-btn icon @click="editDialog = false">
-            <v-icon>mdi-close</v-icon>
-          </v-btn>
-          <v-toolbar-title>Editar Animal</v-toolbar-title>
-          <v-toolbar-items>
-            <v-btn variant="text" color="primary" @click="saveAnimal">Guardar</v-btn>
-          </v-toolbar-items>
-        </v-toolbar>
-
-        <v-card-text class="pa-4 bg-grey-lighten-5">
-          <v-form ref="form">
-            <v-card elevation="0" border class="pa-4 mb-4">
-              <div class="text-subtitle-2 font-weight-bold text-primary mb-3">Identificación</div>
-              <v-row dense>
-                <v-col cols="6"><v-text-field v-model="formData.mark" label="Marca *" variant="outlined" density="comfortable" bg-color="white" /></v-col>
-                <v-col cols="6"><v-text-field v-model="formData.number" label="Número *" variant="outlined" density="comfortable" bg-color="white" /></v-col>
-                <v-col cols="12"><v-text-field v-model="formData.name" label="Nombre *" variant="outlined" density="comfortable" bg-color="white" /></v-col>
-                <v-col cols="6">
-                  <v-select v-model="formData.sex" label="Sexo *" :items="['Macho', 'Hembra']" variant="outlined" density="comfortable" bg-color="white" />
-                </v-col>
-                <v-col cols="6">
-                  <v-select v-model="formData.breed" label="Raza *" :items="breedOptions" variant="outlined" density="comfortable" bg-color="white" />
-                </v-col>
-              </v-row>
-            </v-card>
-
-            <v-card elevation="0" border class="pa-4 mb-4">
-              <div class="text-subtitle-2 font-weight-bold text-primary mb-3">Detalles & Estado</div>
-              <v-row dense>
-                <v-col cols="12" md="6"><v-text-field v-model="formData.date_of_birth" label="Fecha Nacimiento *" type="date" variant="outlined" density="comfortable" bg-color="white" /></v-col>
-                <v-col cols="12" md="6">
-                  <v-select v-model="formData.status" label="Estado *" :items="['Activo', 'Vendido', 'Muerto']" variant="outlined" density="comfortable" bg-color="white" />
-                </v-col>
-              </v-row>
-            </v-card>
-
-            <v-card elevation="0" border class="pa-4">
-              <div class="text-subtitle-2 font-weight-bold text-primary mb-3">Adquisición</div>
-              <v-row dense>
-                <v-col cols="6">
-                  <v-select v-model="formData.acquisition_type" label="Tipo" :items="['Compra', 'Nacimiento', 'Donación', 'Negocio']" variant="outlined" density="comfortable" bg-color="white" />
-                </v-col>
-                <v-col cols="6" v-if="formData.acquisition_type !== 'Nacimiento'">
-                  <v-text-field v-model.number="formData.acquisition_price" label="Costo" type="number" variant="outlined" prefix="$" density="comfortable" bg-color="white" />
-                </v-col>
-                <v-col cols="12">
-                  <v-textarea v-model="formData.notes" label="Notas Adicionales" variant="outlined" rows="2" auto-grow density="comfortable" bg-color="white" />
-                </v-col>
-              </v-row>
-            </v-card>
-          </v-form>
-        </v-card-text>
-      </v-card>
-    </v-dialog>
+    <!-- Animal Form Dialog -->
+    <AnimalFormDialog
+      v-model="editDialog"
+      :animal="formData"
+      @save="handleSave"
+      @delete="handleDelete"
+    />
   </v-container>
   
   <v-container v-else class="fill-height d-flex align-center justify-center">
@@ -335,10 +300,12 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, provide } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useLivestockStore } from '../stores/livestock';
 import { useBreedsStore } from '../stores/breeds';
+import { useContactsStore } from '../stores/contacts';
 import type { Animal } from '../types';
+import AnimalFormDialog from '../components/AnimalFormDialog.vue';
 
 // ECharts
 import { use } from 'echarts/core';
@@ -365,18 +332,20 @@ use([
 provide(THEME_KEY, 'light');
 
 const route = useRoute();
+const router = useRouter();
 const livestockStore = useLivestockStore();
 const breedsStore = useBreedsStore();
+const contactsStore = useContactsStore();
 
 const editDialog = ref(false);
-const formData = ref<Animal>({} as Animal);
-const form = ref();
+const formData = ref<Animal | null>(null);
 
 onMounted(() => {
   if (livestockStore.animals.length === 0) {
     livestockStore.loadAnimals();
   }
   breedsStore.loadBreeds();
+  contactsStore.loadContacts();
 });
 
 const animal = computed(() => {
@@ -384,7 +353,15 @@ const animal = computed(() => {
   return livestockStore.animals.find(a => a.id === id);
 });
 
-const breedOptions = computed(() => breedsStore.breeds.map(b => b.name));
+const seller = computed(() => {
+  if (!animal.value?.sellerId) return null;
+  return contactsStore.contacts.find(c => c.id === animal.value?.sellerId);
+});
+
+const buyer = computed(() => {
+  if (!animal.value?.buyerId) return null;
+  return contactsStore.contacts.find(c => c.id === animal.value?.buyerId);
+});
 
 const openEditDialog = () => {
   if (animal.value) {
@@ -393,11 +370,17 @@ const openEditDialog = () => {
   }
 };
 
-const saveAnimal = async () => {
-  if (animal.value?.id) {
-    await livestockStore.updateAnimal(animal.value.id, formData.value);
+const handleSave = async (data: Animal) => {
+  if (data.id) {
+    await livestockStore.updateAnimal(data.id, data);
     editDialog.value = false;
   }
+};
+
+const handleDelete = async (id: string | number) => {
+  await livestockStore.deleteAnimal(id);
+  editDialog.value = false;
+  router.push('/livestock');
 };
 
 const offspring = computed(() => {

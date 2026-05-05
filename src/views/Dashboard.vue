@@ -163,6 +163,61 @@
           </v-card>
         </v-col>
       </v-row>
+
+      <!-- Female Performance Table -->
+      <v-card border flat class="rounded-xl pa-4 mt-6">
+        <div class="d-flex align-center mb-4 flex-wrap ga-4">
+          <div class="text-subtitle-1 font-weight-bold">Rendimiento de Madres (> 2 años)</div>
+          <v-spacer />
+          <v-select
+            v-model="motherStatusFilter"
+            :items="['Todos', 'Activo', 'Vendido', 'Muerto']"
+            label="Estado"
+            density="compact"
+            variant="outlined"
+            hide-details
+            style="max-width: 150px"
+          />
+          <v-text-field
+            v-model="motherSearch"
+            append-inner-icon="mdi-magnify"
+            label="Buscar Madre"
+            single-line
+            hide-details
+            density="compact"
+            variant="outlined"
+            style="max-width: 250px"
+          />
+        </div>
+        <v-data-table
+          :headers="motherHeaders"
+          :items="femalePerformanceData"
+          :search="motherSearch"
+          class="elevation-0 bg-transparent"
+          hover
+          density="comfortable"
+        >
+          <template v-slot:item.name="{ item }">
+            <div class="font-weight-bold text-primary clickable-cell" style="cursor: pointer" @click="$router.push(`/livestock/${item.id}`)">
+              {{ item.name }}
+            </div>
+            <div class="text-caption text-grey">{{ item.number }}</div>
+          </template>
+          <template v-slot:item.offspringCount="{ item }">
+            <v-chip color="blue" size="small" variant="tonal" class="font-weight-bold">
+              {{ item.offspringCount }}
+            </v-chip>
+          </template>
+          <template v-slot:item.soldOffspring="{ item }">
+            <span class="text-success font-weight-bold">{{ item.soldOffspring }}</span>
+          </template>
+          <template v-slot:item.deadOffspring="{ item }">
+            <span :class="item.deadOffspring > 0 ? 'text-error font-weight-bold' : 'text-grey'">
+              {{ item.deadOffspring }}
+            </span>
+          </template>
+        </v-data-table>
+      </v-card>
     </div>
 
   </v-container>
@@ -218,6 +273,16 @@ const filters = ref({
   status: 'Todos'
 })
 
+const motherSearch = ref('')
+const motherStatusFilter = ref('Activo')
+const motherHeaders = [
+  { title: 'Madre', key: 'name', sortable: true },
+  { title: 'Total Crías', key: 'offspringCount', align: 'center' as const, sortable: true },
+  { title: 'Último Parto', key: 'timeSinceLastBirth', align: 'center' as const, sortable: true },
+  { title: 'Vendidas', key: 'soldOffspring', align: 'center' as const, sortable: true },
+  { title: 'Bajas', key: 'deadOffspring', align: 'center' as const, sortable: true },
+]
+
 onMounted(async () => {
   await livestockStore.loadAnimals()
   await breedsStore.loadBreeds()
@@ -232,6 +297,42 @@ const filteredAnimals = computed(() => {
     const matchStatus = filters.value.status === 'Todos' || a.status === filters.value.status
     return matchBreed && matchSex && matchStatus
   })
+})
+
+const femalePerformanceData = computed(() => {
+  const now = new Date()
+  return livestockStore.animals.filter(a => {
+    if (a.sex !== 'Hembra' || !a.date_of_birth) return false
+    
+    // Filtro por estado
+    if (motherStatusFilter.value !== 'Todos' && a.status !== motherStatusFilter.value) return false
+
+    const dob = new Date(a.date_of_birth)
+    const ageY = (now.getTime() - dob.getTime()) / (1000 * 60 * 60 * 24 * 365.25)
+    return ageY > 2
+  }).map(mother => {
+    const motherOffspring = livestockStore.animals.filter(a => a.motherId === mother.id)
+    const lastBirth = motherOffspring.length > 0 
+      ? new Date(Math.max(...motherOffspring.map(o => new Date(o.date_of_birth).getTime())))
+      : null
+    
+    let timeSinceLast = '-'
+    if (lastBirth) {
+      const diffDays = Math.floor((now.getTime() - lastBirth.getTime()) / (1000 * 60 * 60 * 24))
+      if (diffDays < 30) timeSinceLast = `${diffDays}d`
+      else timeSinceLast = `${Math.floor(diffDays / 30)}m (${diffDays}d)`
+    }
+
+    return {
+      id: mother.id,
+      name: mother.name || mother.number,
+      number: mother.number,
+      offspringCount: motherOffspring.length,
+      timeSinceLastBirth: timeSinceLast,
+      soldOffspring: motherOffspring.filter(o => o.status === 'Vendido').length,
+      deadOffspring: motherOffspring.filter(o => o.status === 'Muerto').length
+    }
+  }).sort((a, b) => b.offspringCount - a.offspringCount)
 })
 
 const formatCurrency = (val: number) => {
@@ -533,7 +634,7 @@ const birthsOverTimeOption = computed(() => {
     tooltip: { trigger: 'axis' },
     xAxis: { type: 'category', data: months },
     yAxis: { type: 'value', minInterval: 1 },
-    series: [{ data, type: 'bar', itemStyle: { color: '#009688' } }]
+    series: [{ data, type: 'line', smooth: true, areaStyle: { opacity: 0.1 }, itemStyle: { color: '#009688' } }]
   }
 })
 

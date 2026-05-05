@@ -93,6 +93,22 @@
 
             <v-divider class="my-2"></v-divider>
 
+            <v-list-item @click="triggerCsvImport" density="compact">
+                <template v-slot:prepend>
+                    <v-icon icon="mdi-file-import" color="success"></v-icon>
+                </template>
+                <v-list-item-title>Cargar Animales (CSV)</v-list-item-title>
+            </v-list-item>
+
+            <v-list-item @click="downloadCsvTemplate" density="compact">
+                <template v-slot:prepend>
+                    <v-icon icon="mdi-file-download" color="info"></v-icon>
+                </template>
+                <v-list-item-title>Bajar Plantilla (CSV)</v-list-item-title>
+            </v-list-item>
+
+            <v-divider class="my-2"></v-divider>
+
             <v-list-item @click="logout" density="compact">
                 <template v-slot:prepend>
                     <v-icon icon="mdi-logout" color="error"></v-icon>
@@ -112,6 +128,13 @@
         style="display: none"
         @change="handleImport"
       />
+      <input
+        ref="csvInput"
+        type="file"
+        accept=".csv"
+        style="display: none"
+        @change="handleCsvImport"
+      />
       <v-container fluid>
         <router-view />
       </v-container>
@@ -129,20 +152,27 @@ import { useDataImport } from '../utils/dataImport'
 import { useLivestockStore } from '../stores/livestock'
 import { useBreedsStore } from '../stores/breeds'
 import { useContactsStore } from '../stores/contacts'
+import { useCsvHandler } from '../utils/csvHandler'
 
 const authStore = useAuthStore()
 const route = useRoute()
 const router = useRouter()
 const { downloadAllData } = useDataExport()
 const { importData } = useDataImport()
+const { downloadCsvTemplate, handleCsvUpload } = useCsvHandler()
 const livestockStore = useLivestockStore()
 const breedsStore = useBreedsStore()
 const contactsStore = useContactsStore()
 
 const fileInput = ref<HTMLInputElement | null>(null)
+const csvInput = ref<HTMLInputElement | null>(null)
 
 const triggerImport = () => {
   fileInput.value?.click()
+}
+
+const triggerCsvImport = () => {
+  csvInput.value?.click()
 }
 
 const handleImport = async (event: Event) => {
@@ -151,6 +181,18 @@ const handleImport = async (event: Event) => {
   if (!file) return
 
   const result = await importData(file)
+  alert(result.message)
+  
+  // Clear input
+  target.value = ''
+}
+
+const handleCsvImport = async (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+
+  const result = await handleCsvUpload(file)
   alert(result.message)
   
   // Clear input
@@ -182,6 +224,7 @@ watch(mobile, (isMobile) => {
 const menuItems = [
   { title: 'Dashboard', icon: 'mdi-view-dashboard', to: '/' },
   { title: 'Ganado', icon: 'mdi-cow', to: '/livestock' },
+  { title: 'Gastos', icon: 'mdi-cash-register', to: '/expenses' },
   { title: 'Razas', icon: 'mdi-dna', to: '/breeds' },
   { title: 'Contactos', icon: 'mdi-account-multiple', to: '/contacts' },
 ]

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, onUnmounted } from 'vue'
+import { ref } from 'vue'
 import type { Breed } from '../types'
 import { db } from '../firebase'
 import {
@@ -20,7 +20,7 @@ export const useBreedsStore = defineStore('breeds', () => {
 
   // 🔥 Load breeds (realtime)
   const loadBreeds = () => {
-    if (unsubscribe) unsubscribe()
+    if (unsubscribe) return
 
     const q = query(breedsCol)
     unsubscribe = onSnapshot(q, (snapshot) => {
@@ -47,11 +47,6 @@ export const useBreedsStore = defineStore('breeds', () => {
     const breedRef = doc(db, 'breeds', id)
     await deleteDoc(breedRef)
   }
-
-  // 🧹 Cleanup
-  onUnmounted(() => {
-    if (unsubscribe) unsubscribe()
-  })
 
   return {
     breeds,

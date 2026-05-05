@@ -19,7 +19,26 @@ export interface Animal {
   death_reason?: string
   death_date?: string
   motherId?: string | number | null
+  feeding_stage?: 'Potrero' | 'Leche' | null
 }
+
+export interface Expense {
+  id?: string
+  amount: number
+  date: string
+  description: string
+  category: 'Pastoreo' | 'Alimento' | 'Medicamento' | 'Compra' | 'Transporte' | 'Mantenimiento' | 'Mano de obra' | 'Venta' | 'Otro'
+  type: 'Gasto' | 'Ingreso'
+  scope: 'Global' | 'Individual'
+  created_at?: string
+}
+
+export interface ExpenseAnimal {
+  expense_id: string
+  animal_id: string
+  amount_per_animal: number
+}
+
  
 
 export interface Breed {
