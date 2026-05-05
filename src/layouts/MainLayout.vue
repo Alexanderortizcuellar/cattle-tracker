@@ -29,7 +29,7 @@
 
       <template v-slot:append>
         <div class="pa-4 text-caption text-center text-medium-emphasis">
-          v1.0.0
+          v2.0.0
         </div>
       </template>
     </v-navigation-drawer>
