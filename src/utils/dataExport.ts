@@ -1,23 +1,37 @@
 import { useLivestockStore } from '../stores/livestock'
 import { useBreedsStore } from '../stores/breeds'
 import { useContactsStore } from '../stores/contacts'
+import { useExpensesStore } from '../stores/expenses'
+
+export interface ExportOptions {
+  animals?: boolean;
+  breeds?: boolean;
+  contacts?: boolean;
+  expenses?: boolean;
+}
 
 export const useDataExport = () => {
   const livestockStore = useLivestockStore()
   const breedsStore = useBreedsStore()
   const contactsStore = useContactsStore()
+  const expensesStore = useExpensesStore()
 
   /**
-   * Downloads all application data as a JSON file.
+   * Downloads selected application data as a JSON file.
    */
-  const downloadAllData = () => {
-    // Collect data from stores
-    const data = {
-      animals: livestockStore.animals,
-      breeds: breedsStore.breeds,
-      contacts: contactsStore.contacts,
+  const downloadData = (options: ExportOptions = { animals: true, breeds: true, contacts: true, expenses: true }) => {
+    // Collect data from stores based on options
+    const data: any = {
       version: '1.0.0',
       exportDate: new Date().toISOString(),
+    }
+
+    if (options.animals) data.animals = livestockStore.animals
+    if (options.breeds) data.breeds = breedsStore.breeds
+    if (options.contacts) data.contacts = contactsStore.contacts
+    if (options.expenses) {
+      data.expenses = expensesStore.expenses
+      data.expenses_animals = expensesStore.expensesAnimals
     }
 
     // Create a Blob from the JSON data
@@ -43,6 +57,6 @@ export const useDataExport = () => {
   }
 
   return {
-    downloadAllData,
+    downloadData,
   }
 }

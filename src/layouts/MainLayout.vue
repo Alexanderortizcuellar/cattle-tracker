@@ -41,6 +41,7 @@
       ></v-app-bar-nav-icon>
 
       <v-toolbar-title class="text-subtitle-1 text-sm-h6 font-weight-bold text-primary">
+        <v-icon start v-if="currentIcon" class="mr-2">{{ currentIcon }}</v-icon>
         {{ currentTitle }}
       </v-toolbar-title>
 
@@ -77,38 +78,6 @@
             </v-list-item>
             <v-divider class="d-sm-none my-2"></v-divider>
             
-            <v-list-item @click="downloadAllData" density="compact">
-                <template v-slot:prepend>
-                    <v-icon icon="mdi-download" color="primary"></v-icon>
-                </template>
-                <v-list-item-title>Exportar Datos (JSON)</v-list-item-title>
-            </v-list-item>
-
-            <v-list-item @click="triggerImport" density="compact">
-                <template v-slot:prepend>
-                    <v-icon icon="mdi-upload" color="secondary"></v-icon>
-                </template>
-                <v-list-item-title>Importar Datos (JSON)</v-list-item-title>
-            </v-list-item>
-
-            <v-divider class="my-2"></v-divider>
-
-            <v-list-item @click="triggerCsvImport" density="compact">
-                <template v-slot:prepend>
-                    <v-icon icon="mdi-file-import" color="success"></v-icon>
-                </template>
-                <v-list-item-title>Cargar Animales (CSV)</v-list-item-title>
-            </v-list-item>
-
-            <v-list-item @click="downloadCsvTemplate" density="compact">
-                <template v-slot:prepend>
-                    <v-icon icon="mdi-file-download" color="info"></v-icon>
-                </template>
-                <v-list-item-title>Bajar Plantilla (CSV)</v-list-item-title>
-            </v-list-item>
-
-            <v-divider class="my-2"></v-divider>
-
             <v-list-item @click="logout" density="compact">
                 <template v-slot:prepend>
                     <v-icon icon="mdi-logout" color="error"></v-icon>
@@ -120,21 +89,6 @@
     </v-app-bar>
 
     <v-main class="bg-grey-lighten-4">
-      <!-- Input oculto para importación -->
-      <input
-        ref="fileInput"
-        type="file"
-        accept=".json"
-        style="display: none"
-        @change="handleImport"
-      />
-      <input
-        ref="csvInput"
-        type="file"
-        accept=".csv"
-        style="display: none"
-        @change="handleCsvImport"
-      />
       <v-container fluid>
         <router-view />
       </v-container>
@@ -147,57 +101,16 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify' // Importante para responsive
 import { useAuthStore } from '../stores/useAuthStore'
-import { useDataExport } from '../utils/dataExport'
-import { useDataImport } from '../utils/dataImport'
 import { useLivestockStore } from '../stores/livestock'
 import { useBreedsStore } from '../stores/breeds'
 import { useContactsStore } from '../stores/contacts'
-import { useCsvHandler } from '../utils/csvHandler'
 
 const authStore = useAuthStore()
 const route = useRoute()
 const router = useRouter()
-const { downloadAllData } = useDataExport()
-const { importData } = useDataImport()
-const { downloadCsvTemplate, handleCsvUpload } = useCsvHandler()
 const livestockStore = useLivestockStore()
 const breedsStore = useBreedsStore()
 const contactsStore = useContactsStore()
-
-const fileInput = ref<HTMLInputElement | null>(null)
-const csvInput = ref<HTMLInputElement | null>(null)
-
-const triggerImport = () => {
-  fileInput.value?.click()
-}
-
-const triggerCsvImport = () => {
-  csvInput.value?.click()
-}
-
-const handleImport = async (event: Event) => {
-  const target = event.target as HTMLInputElement
-  const file = target.files?.[0]
-  if (!file) return
-
-  const result = await importData(file)
-  alert(result.message)
-  
-  // Clear input
-  target.value = ''
-}
-
-const handleCsvImport = async (event: Event) => {
-  const target = event.target as HTMLInputElement
-  const file = target.files?.[0]
-  if (!file) return
-
-  const result = await handleCsvUpload(file)
-  alert(result.message)
-  
-  // Clear input
-  target.value = ''
-}
 
 onMounted(() => {
   livestockStore.loadAnimals()
@@ -227,6 +140,7 @@ const menuItems = [
   { title: 'Gastos', icon: 'mdi-cash-register', to: '/expenses' },
   { title: 'Razas', icon: 'mdi-dna', to: '/breeds' },
   { title: 'Contactos', icon: 'mdi-account-multiple', to: '/contacts' },
+  { title: 'Admin', icon: 'mdi-cog', to: '/admin' },
 ]
 
 const logout = async () => {
@@ -237,6 +151,11 @@ const logout = async () => {
 const currentTitle = computed(() => {
   const item = menuItems.find(item => item.to === route.path)
   return item?.title || 'Sistema Ganadero'
+})
+
+const currentIcon = computed(() => {
+  const item = menuItems.find(item => item.to === route.path)
+  return item?.icon || ''
 })
 
 const currentDate = computed(() => {

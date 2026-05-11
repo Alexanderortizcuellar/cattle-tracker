@@ -5,6 +5,7 @@ import CattleProfile from '../views/CattleProfile.vue'
 import Breeds from '../views/Breeds.vue'
 import Contacts from '../views/Contacts.vue'
 import Expenses from '../views/Expenses.vue'
+import Admin from '../views/Admin.vue'
 import Login from '../views/Login.vue'
 import { useAuthStore } from '../stores/useAuthStore'
 import { watch } from 'vue'
@@ -17,6 +18,7 @@ const routes: Array<RouteRecordRaw> = [
   { path: '/breeds', name: 'Breeds', component: Breeds, meta: { requiresAuth: true } },
   { path: '/contacts', name: 'Contacts', component: Contacts, meta: { requiresAuth: true } },
   { path: '/expenses', name: 'Expenses', component: Expenses, meta: { requiresAuth: true } },
+  { path: '/admin', name: 'Admin', component: Admin, meta: { requiresAuth: true } },
 ]
 
 const router = createRouter({

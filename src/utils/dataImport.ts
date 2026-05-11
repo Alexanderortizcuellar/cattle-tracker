@@ -11,15 +11,20 @@ export const useDataImport = () => {
       const text = await file.text()
       const data = JSON.parse(text)
 
-      // Basic validation
-      if (!data.animals || !data.breeds || !data.contacts) {
-        throw new Error('El archivo JSON no tiene el formato correcto.')
+      // Basic validation - check if it's at least a JSON with some known entities
+      const knownEntities = ['animals', 'breeds', 'contacts', 'expenses', 'expenses_animals']
+      const hasKnownEntity = knownEntities.some(key => Array.isArray(data[key]))
+      
+      if (!hasKnownEntity) {
+        throw new Error('El archivo JSON no contiene datos válidos para importar.')
       }
 
       const collections = [
-        { name: 'animals', items: data.animals },
-        { name: 'breeds', items: data.breeds },
-        { name: 'contacts', items: data.contacts }
+        { name: 'animals', items: data.animals || [] },
+        { name: 'breeds', items: data.breeds || [] },
+        { name: 'contacts', items: data.contacts || [] },
+        { name: 'expenses', items: data.expenses || [] },
+        { name: 'expenses_animals', items: data.expenses_animals || [] }
       ]
 
       let totalImported = 0
