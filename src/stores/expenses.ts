@@ -21,18 +21,24 @@ export const useExpensesStore = defineStore('expenses', () => {
   
   const expenses = ref<Expense[]>([])
   const expensesAnimals = ref<ExpenseAnimal[]>([])
+  const loading = ref(false)
   
   let expensesUnsubscribe: Unsubscribe | null = null
   let associationsUnsubscribe: Unsubscribe | null = null
 
   const loadExpenses = () => {
     if (expensesUnsubscribe) return
+    loading.value = true
     const q = query(expensesCol)
     expensesUnsubscribe = onSnapshot(q, (snapshot) => {
       expenses.value = snapshot.docs.map((d) => ({
         id: d.id,
         ...(d.data() as Expense),
       }))
+      loading.value = false
+    }, (error) => {
+      console.error("Error loading expenses:", error)
+      loading.value = false
     })
   }
 
@@ -65,19 +71,46 @@ export const useExpensesStore = defineStore('expenses', () => {
     return expenseId
   }
 
-  const updateExpense = async (id: string, updates: Partial<Expense>) => {
+  const updateExpense = async (id: string, updates: Partial<Expense>, animalIds?: string[]) => {
     const expenseRef = doc(db, 'expenses', id)
     await updateDoc(expenseRef, updates)
     
-    // If amount changed and it's individual, update animal amounts
-    if (updates.amount !== undefined) {
+    const finalAmount = updates.amount !== undefined ? updates.amount : (expenses.value.find(e => e.id === id)?.amount || 0)
+    const finalScope = updates.scope !== undefined ? updates.scope : (expenses.value.find(e => e.id === id)?.scope || 'Global')
+
+    if (finalScope === 'Global') {
       const q = query(expensesAnimalsCol, where('expense_id', '==', id))
       const snapshot = await getDocs(q)
-      const newAmountPerAnimal = updates.amount / snapshot.docs.length
       for (const d of snapshot.docs) {
-        await updateDoc(doc(db, 'expenses_animals', d.id), {
-          amount_per_animal: newAmountPerAnimal
-        })
+        await deleteDoc(doc(db, 'expenses_animals', d.id))
+      }
+    } else if (animalIds) {
+      const q = query(expensesAnimalsCol, where('expense_id', '==', id))
+      const snapshot = await getDocs(q)
+      for (const d of snapshot.docs) {
+        await deleteDoc(doc(db, 'expenses_animals', d.id))
+      }
+
+      if (animalIds.length > 0) {
+        const amountPerAnimal = finalAmount / animalIds.length
+        for (const animalId of animalIds) {
+          await addDoc(expensesAnimalsCol, {
+            expense_id: id,
+            animal_id: animalId,
+            amount_per_animal: amountPerAnimal
+          })
+        }
+      }
+    } else if (updates.amount !== undefined) {
+      const q = query(expensesAnimalsCol, where('expense_id', '==', id))
+      const snapshot = await getDocs(q)
+      if (snapshot.docs.length > 0) {
+        const newAmountPerAnimal = finalAmount / snapshot.docs.length
+        for (const d of snapshot.docs) {
+          await updateDoc(doc(db, 'expenses_animals', d.id), {
+            amount_per_animal: newAmountPerAnimal
+          })
+        }
       }
     }
   }
@@ -109,6 +142,7 @@ export const useExpensesStore = defineStore('expenses', () => {
   return {
     expenses,
     expensesAnimals,
+    loading,
     loadExpenses,
     loadAssociations,
     addExpense,

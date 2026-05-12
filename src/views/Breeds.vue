@@ -59,7 +59,8 @@
     </v-card>
 
     <v-dialog v-model="dialog" max-width="600px" persistent>
-      <v-card>
+      <v-card :disabled="saving">
+        <v-progress-linear v-if="saving" indeterminate color="primary" absolute top></v-progress-linear>
         <v-card-title>
           <span class="text-h5">{{ editMode ? 'Editar Raza' : 'Nueva Raza' }}</span>
         </v-card-title>
@@ -89,22 +90,23 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn @click="closeDialog">Cancelar</v-btn>
-          <v-btn color="primary" @click="saveBreed">Guardar</v-btn>
+          <v-btn @click="closeDialog" :disabled="saving">Cancelar</v-btn>
+          <v-btn color="primary" @click="saveBreed" :loading="saving">Guardar</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
-    <v-dialog v-model="deleteDialog" max-width="400px">
-      <v-card>
+    <v-dialog v-model="deleteDialog" max-width="400px" persistent>
+      <v-card :disabled="saving">
+        <v-progress-linear v-if="saving" indeterminate color="error" absolute top></v-progress-linear>
         <v-card-title>Confirmar Eliminación</v-card-title>
         <v-card-text>
           ¿Está seguro de que desea eliminar esta raza?
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn @click="deleteDialog = false">Cancelar</v-btn>
-          <v-btn color="error" @click="deleteBreed">Eliminar</v-btn>
+          <v-btn @click="deleteDialog = false" :disabled="saving">Cancelar</v-btn>
+          <v-btn color="error" @click="deleteBreed" :loading="saving">Eliminar</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -123,6 +125,7 @@ const dialog = ref(false)
 const deleteDialog = ref(false)
 const editMode = ref(false)
 const currentId = ref<string | undefined>()
+const saving = ref(false)
 
 const form = ref()
 onMounted(() => {
@@ -172,13 +175,17 @@ const saveBreed = async () => {
   const { valid } = await form.value.validate()
   if (!valid) return
 
-  if (editMode.value && currentId.value) {
-    breedsStore.updateBreed(currentId.value.toString(), formData.value)
-  } else {
-    breedsStore.addBreed(formData.value)
+  saving.value = true
+  try {
+    if (editMode.value && currentId.value) {
+      await breedsStore.updateBreed(currentId.value.toString(), formData.value)
+    } else {
+      await breedsStore.addBreed(formData.value)
+    }
+    closeDialog()
+  } finally {
+    saving.value = false
   }
-
-  closeDialog()
 }
 
 const confirmDelete = (breed: Breed) => {
@@ -186,10 +193,15 @@ const confirmDelete = (breed: Breed) => {
   deleteDialog.value = true
 }
 
-const deleteBreed = () => {
+const deleteBreed = async () => {
   if (currentId.value) {
-    breedsStore.deleteBreed(currentId.value.toString())
+    saving.value = true
+    try {
+      await breedsStore.deleteBreed(currentId.value.toString())
+      deleteDialog.value = false
+    } finally {
+      saving.value = false
+    }
   }
-  deleteDialog.value = false
 }
 </script>

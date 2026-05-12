@@ -79,7 +79,8 @@
     </v-card>
 
     <v-dialog v-model="dialog" max-width="600px" persistent>
-      <v-card>
+      <v-card :disabled="saving">
+        <v-progress-linear v-if="saving" indeterminate color="primary" absolute top></v-progress-linear>
         <v-card-title>
           <span class="text-h5">{{
             editMode ? "Editar Contacto" : "Nuevo Contacto"
@@ -119,22 +120,23 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn @click="closeDialog">Cancelar</v-btn>
-          <v-btn color="primary" @click="saveContact">Guardar</v-btn>
+          <v-btn @click="closeDialog" :disabled="saving">Cancelar</v-btn>
+          <v-btn color="primary" @click="saveContact" :loading="saving">Guardar</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
-    <v-dialog v-model="deleteDialog" max-width="400px">
-      <v-card>
+    <v-dialog v-model="deleteDialog" max-width="400px" persistent>
+      <v-card :disabled="saving">
+        <v-progress-linear v-if="saving" indeterminate color="error" absolute top></v-progress-linear>
         <v-card-title>Confirmar Eliminación</v-card-title>
         <v-card-text>
           ¿Está seguro de que desea eliminar este contacto?
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn @click="deleteDialog = false">Cancelar</v-btn>
-          <v-btn color="error" @click="deleteContact">Eliminar</v-btn>
+          <v-btn @click="deleteDialog = false" :disabled="saving">Cancelar</v-btn>
+          <v-btn color="error" @click="deleteContact" :loading="saving">Eliminar</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -154,6 +156,7 @@ const dialog = ref(false);
 const deleteDialog = ref(false);
 const editMode = ref(false);
 const currentId = ref<string | undefined>();
+const saving = ref(false);
 
 const form = ref();
 onMounted(() => {
@@ -199,7 +202,6 @@ const getTypeColor = (type: string) => {
 };
 
 const openDialog = (contact?: Contact) => {
-  console.log(contactsStore.contacts);
   if (contact && contact.id) {
     editMode.value = true;
     currentId.value = contact.id;
@@ -226,13 +228,17 @@ const saveContact = async () => {
   const { valid } = await form.value.validate();
   if (!valid) return;
 
-  if (editMode.value && currentId.value) {
-    contactsStore.updateContact(currentId.value.toString(), formData.value);
-  } else {
-    contactsStore.addContact(formData.value);
+  saving.value = true;
+  try {
+    if (editMode.value && currentId.value) {
+      await contactsStore.updateContact(currentId.value.toString(), formData.value);
+    } else {
+      await contactsStore.addContact(formData.value);
+    }
+    closeDialog();
+  } finally {
+    saving.value = false;
   }
-
-  closeDialog();
 };
 
 const confirmDelete = (contact: Contact) => {
@@ -240,10 +246,15 @@ const confirmDelete = (contact: Contact) => {
   deleteDialog.value = true;
 };
 
-const deleteContact = () => {
+const deleteContact = async () => {
   if (currentId.value) {
-    contactsStore.deleteContact(currentId.value.toString());
+    saving.value = true;
+    try {
+      await contactsStore.deleteContact(currentId.value.toString());
+      deleteDialog.value = false;
+    } finally {
+      saving.value = false;
+    }
   }
-  deleteDialog.value = false;
 };
 </script>

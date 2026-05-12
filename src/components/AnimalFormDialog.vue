@@ -6,16 +6,27 @@
     transition="dialog-bottom-transition"
     @click:outside="close"
   >
-    <v-card>
+    <v-card :disabled="loading">
+      <v-progress-linear
+        v-if="loading"
+        indeterminate
+        color="primary"
+        absolute
+        top
+      ></v-progress-linear>
       <v-toolbar color="white" elevation="1">
-        <v-btn icon @click="close">
+        <v-btn icon @click="close" :disabled="loading">
           <v-icon>mdi-close</v-icon>
         </v-btn>
         <v-toolbar-title>{{
           isEdit ? "Editar Animal" : "Nuevo Animal"
         }}</v-toolbar-title>
         <v-toolbar-items>
-          <v-btn variant="text" color="primary" @click="save"
+          <v-btn
+            variant="text"
+            color="primary"
+            @click="save"
+            :loading="loading"
             >Guardar</v-btn
           >
         </v-toolbar-items>
@@ -57,10 +68,6 @@
                   variant="outlined"
                   density="comfortable"
                   bg-color="white"
-                  :loading="isGeneratingName"
-                  :disabled="isGeneratingName"
-                  append-inner-icon="mdi-refresh"
-                  @click:append-inner="generateName"
                 />
               </v-col>
               <v-col cols="6">
@@ -358,6 +365,7 @@ import { useContactsStore } from '../stores/contacts';
 const props = defineProps<{
   modelValue: boolean;
   animal?: Animal | null;
+  loading?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -373,7 +381,6 @@ const contactsStore = useContactsStore();
 
 const form = ref();
 const deleteConfirmDialog = ref(false);
-const isGeneratingName = ref(false);
 
 const initialFormData: Animal = {
   mark: '',
@@ -438,16 +445,9 @@ watch(() => props.modelValue, (newVal) => {
       formData.value = { ...initialFormData, ...props.animal };
     } else {
       formData.value = { ...initialFormData };
-      generateName();
     }
   } else {
     form.value?.reset();
-  }
-});
-
-watch(() => formData.value.sex, (newSex, oldSex) => {
-  if (!isEdit.value && newSex !== oldSex) {
-    generateName();
   }
 });
 
@@ -464,22 +464,8 @@ watch(() => formData.value.status, (newStatus) => {
   }
 });
 
-const generateName = async () => {
-  try {
-    isGeneratingName.value = true;
-    const gender = formData.value.sex === 'Macho' ? 'male' : 'female';
-    const response = await fetch(`https://randomuser.me/api/?gender=${gender}&nat=es`);
-    const data = await response.json();
-    const { first, last } = data.results[0].name;
-    formData.value.name = `${first.charAt(0).toUpperCase() + first.slice(1)} ${last.charAt(0).toUpperCase() + last.slice(1)}`;
-  } catch (error) {
-    console.error('Error generando nombre:', error);
-  } finally {
-    isGeneratingName.value = false;
-  }
-};
-
 const close = () => {
+  if (props.loading) return;
   internalShow.value = false;
 };
 
@@ -498,6 +484,5 @@ const handleDelete = () => {
     emit('delete', props.animal.id);
   }
   deleteConfirmDialog.value = false;
-  close();
 };
 </script>

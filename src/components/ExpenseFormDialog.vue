@@ -2,8 +2,8 @@
   <v-dialog v-model="show" max-width="800px" persistent>
     <v-card class="rounded-lg">
       <v-card-title class="pa-4 bg-primary text-white d-flex align-center">
-        <v-icon start class="mr-2">mdi-cash-plus</v-icon>
-        <span class="text-h6">Registrar Gasto</span>
+        <v-icon start class="mr-2">{{ isEditing ? 'mdi-pencil' : 'mdi-cash-plus' }}</v-icon>
+        <span class="text-h6">{{ isEditing ? 'Editar Registro' : 'Registrar Gasto' }}</span>
         <v-spacer></v-spacer>
         <v-btn icon="mdi-close" variant="text" color="white" @click="close"></v-btn>
       </v-card-title>
@@ -225,6 +225,10 @@ import type { Expense } from '../types'
 
 const props = defineProps<{
   modelValue: boolean
+  editData?: {
+    expense: Expense
+    animalIds: string[]
+  } | null
 }>()
 
 const emit = defineEmits(['update:modelValue', 'save'])
@@ -235,6 +239,8 @@ const loading = ref(false)
 const form = ref<any>(null)
 
 const categories = ['Pastoreo', 'Alimento', 'Medicamento', 'Compra', 'Transporte', 'Mantenimiento', 'Mano de obra', 'Venta', 'Otro']
+
+const isEditing = computed(() => !!props.editData)
 
 const formData = ref<Expense>({
   amount: 0,
@@ -290,20 +296,27 @@ const unselectAll = () => {
 
 const close = () => {
   show.value = false
-  resetForm()
+  // Don't reset here, wait for modelValue watch
 }
 
 const resetForm = () => {
   if (form.value) form.value.reset()
-  formData.value = {
-    amount: 0,
-    date: new Date().toISOString().substr(0, 10),
-    description: '',
-    category: 'Otro',
-    type: 'Gasto',
-    scope: 'Global'
+  
+  if (props.editData) {
+    formData.value = { ...props.editData.expense }
+    selectedAnimals.value = [...props.editData.animalIds]
+  } else {
+    formData.value = {
+      amount: 0,
+      date: new Date().toISOString().substr(0, 10),
+      description: '',
+      category: 'Otro',
+      type: 'Gasto',
+      scope: 'Global'
+    }
+    selectedAnimals.value = []
   }
-  selectedAnimals.value = []
+  
   filters.feeding_stage = null
   filters.sex = null
   filters.status = 'Activo'
@@ -317,7 +330,7 @@ const save = async () => {
       expense: { ...formData.value }, 
       animalIds: formData.value.scope === 'Individual' ? [...selectedAnimals.value] : [] 
     })
-    close()
+    show.value = false
   } finally {
     loading.value = false
   }
@@ -325,6 +338,12 @@ const save = async () => {
 
 watch(() => props.modelValue, (newVal) => {
   if (newVal) {
+    resetForm()
+  }
+})
+
+watch(() => props.editData, () => {
+  if (props.modelValue) {
     resetForm()
   }
 })

@@ -138,6 +138,18 @@
                   hide-details="auto"
                 />
               </v-col>
+              <v-col cols="12" sm="3">
+                <v-select
+                  v-model="livestockStore.filters.ageRange"
+                  label="Edad"
+                  :items="['< 1 año', '1 - 2 años', '2 - 3 años', '> 3 años']"
+                  variant="outlined"
+                  density="compact"
+                  bg-color="white"
+                  clearable
+                  hide-details="auto"
+                />
+              </v-col>
             </v-row>
           </v-card-text>
         </div>
@@ -266,7 +278,7 @@
                 </div>
               </div>
             </template>
-            <template v-slot:item.age="{ item }">
+            <template v-slot:item.ageMonths="{ item }">
               {{ getAge(item.date_of_birth) }}
             </template>
             <template v-slot:item.status="{ item }">
@@ -298,6 +310,7 @@
     <AnimalFormDialog
       v-model="dialog"
       :animal="editMode ? formData : null"
+      :loading="saving"
       @save="handleSave"
       @delete="handleDelete"
     />
@@ -312,8 +325,9 @@ import { useLivestockStore } from "../stores/livestock";
 import { useBreedsStore } from "../stores/breeds";
 import { useContactsStore } from "../stores/contacts";
 import { useExpensesStore } from "../stores/expenses";
-import type { Animal, Expense } from "../types";
+import type { Animal } from "../types";
 import AnimalFormDialog from "../components/AnimalFormDialog.vue";
+import { calculateAgeMonths } from "../utils/dashboardHelpers";
 
 const router = useRouter();
 const { mobile } = useDisplay();
@@ -321,6 +335,8 @@ const { mobile } = useDisplay();
 const navigateToProfile = (_: any, { item }: { item: Animal }) => {
   router.push(`/livestock/${item.id}`);
 };
+import { syncAnimalExpenses } from '../utils/expenseSync';
+
 const livestockStore = useLivestockStore();
 const breedsStore = useBreedsStore();
 const contactsStore = useContactsStore();
@@ -329,13 +345,14 @@ const expensesStore = useExpensesStore();
 const dialog = ref(false);
 const editMode = ref(false);
 const formData = ref<Animal | null>(null);
+const saving = ref(false);
 
 const tableHeaders = [
   { title: "Animal", key: "name", sortable: true },
   { title: "Marca", key: "mark", sortable: true },
   { title: "Raza", key: "breed", sortable: true },
   { title: "Sexo", key: "sex", sortable: true },
-  { title: "Edad", key: "age", sortable: true },
+  { title: "Edad", key: "ageMonths", sortable: true },
   { title: "Estado", key: "status", sortable: true },
   {
     title: "Costo",
@@ -356,7 +373,10 @@ onMounted(() => {
 const breedOptions = computed(() => breedsStore.breeds.map((b) => b.name));
 
 const filteredAnimals = computed(() => {
-  let animals = livestockStore.animals;
+  let animals = livestockStore.animals.map(a => ({
+    ...a,
+    ageMonths: calculateAgeMonths(a.date_of_birth)
+  }));
   const f = livestockStore.filters;
 
   if (f.breed)
@@ -367,6 +387,16 @@ const filteredAnimals = computed(() => {
     animals = animals.filter((a) => a.status === f.status);
   if (f.feedingStage)
     animals = animals.filter((a) => a.feeding_stage === f.feedingStage);
+  if (f.ageRange) {
+    animals = animals.filter((a) => {
+      const age = a.ageMonths;
+      if (f.ageRange === '< 1 año') return age < 12;
+      if (f.ageRange === '1 - 2 años') return age >= 12 && age < 24;
+      if (f.ageRange === '2 - 3 años') return age >= 24 && age < 36;
+      if (f.ageRange === '> 3 años') return age >= 36;
+      return true;
+    });
+  }
   if (f.search) {
     const q = f.search.toLowerCase();
     animals = animals.filter((a) =>
@@ -416,77 +446,36 @@ const openDialog = (animal?: Animal) => {
 };
 
 const handleSave = async (data: Animal) => {
-  let animalId = data.id as string;
-  if (editMode.value && animalId) {
-    await livestockStore.updateAnimal(animalId, data);
-  } else {
-    animalId = await livestockStore.addAnimal(data);
-  }
-
-  // --- AUTOMATIC EXPENSES LOGIC ---
-  
-  // 1. Purchase Record
-  if (data.acquisition_type === 'Compra' && data.acquisition_price > 0) {
-    const existingExpenseId = await expensesStore.findAnimalExpense(animalId, 'Compra');
-    if (existingExpenseId) {
-      const expense = expensesStore.expenses.find(e => e.id === existingExpenseId);
-      if (expense && expense.amount !== data.acquisition_price) {
-        if (confirm(`El precio de adquisición cambió. ¿Deseas actualizar el registro de gasto por compra de $${expense.amount} a $${data.acquisition_price}?`)) {
-          await expensesStore.updateExpense(existingExpenseId, { 
-            amount: data.acquisition_price,
-            date: data.acquisition_date
-          });
-        }
-      }
+  saving.value = true;
+  try {
+    let animalId = data.id as string;
+    if (editMode.value && animalId) {
+      await livestockStore.updateAnimal(animalId, data);
     } else {
-      if (confirm(`Has registrado una compra por $${data.acquisition_price}. ¿Deseas crear automáticamente un registro de gasto asociado?`)) {
-        const newExpense: Expense = {
-          amount: data.acquisition_price,
-          date: data.acquisition_date,
-          description: `Compra de animal ${data.number} - ${data.name}`,
-          category: 'Compra',
-          type: 'Gasto',
-          scope: 'Individual'
-        };
-        await expensesStore.addExpense(newExpense, [animalId]);
-      }
+      animalId = await livestockStore.addAnimal(data);
     }
-  }
 
-  // 2. Sale Record
-  if (data.status === 'Vendido' && data.sale_price && data.sale_price > 0) {
-    const existingIncomeId = await expensesStore.findAnimalExpense(animalId, 'Venta');
-    if (existingIncomeId) {
-      const income = expensesStore.expenses.find(e => e.id === existingIncomeId);
-      if (income && income.amount !== data.sale_price) {
-        if (confirm(`El precio de venta cambió. ¿Deseas actualizar el registro de ingreso por venta de $${income.amount} a $${data.sale_price}?`)) {
-          await expensesStore.updateExpense(existingIncomeId, { 
-            amount: data.sale_price,
-            date: data.sale_date || new Date().toISOString().split('T')[0]
-          });
-        }
-      }
-    } else {
-      if (confirm(`Has marcado al animal como vendido por $${data.sale_price}. ¿Deseas crear automáticamente un registro de ingreso asociado?`)) {
-        const newIncome: Expense = {
-          amount: data.sale_price,
-          date: data.sale_date || new Date().toISOString().split('T')[0],
-          description: `Venta de animal ${data.number} - ${data.name}`,
-          category: 'Venta',
-          type: 'Ingreso',
-          scope: 'Individual'
-        };
-        await expensesStore.addExpense(newIncome, [animalId]);
-      }
-    }
-  }
+    // --- AUTOMATIC EXPENSES LOGIC ---
+    await syncAnimalExpenses(animalId, data);
 
-  dialog.value = false;
+    dialog.value = false;
+  } catch (error) {
+    console.error("Error saving animal:", error);
+  } finally {
+    saving.value = false;
+  }
 };
 
 const handleDelete = async (id: string | number) => {
-  await livestockStore.deleteAnimal(id);
-  dialog.value = false;
+  saving.value = true;
+  try {
+    await livestockStore.deleteAnimal(id);
+    dialog.value = false;
+  } catch (error) {
+    console.error("Error deleting animal:", error);
+  } finally {
+    saving.value = false;
+  }
 };
 </script>
 

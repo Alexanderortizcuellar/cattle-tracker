@@ -3,7 +3,7 @@
     <v-row class="mb-4 mb-md-6">
       <v-col cols="12">
         <h1 class="text-h4 text-md-h3 font-weight-bold text-grey-darken-3">
-          Gastos y Egresos
+          Gastos e Ingresos
         </h1>
         <p class="text-body-1 text-md-h6 text-grey-darken-1 mt-1">
           Control financiero de tu operación ganadera
@@ -27,7 +27,7 @@
         <v-btn
           color="primary"
           elevation="2"
-          @click="dialog = true"
+          @click="openNewDialog"
           prepend-icon="mdi-plus"
           size="large"
           class="w-100 w-md-auto"
@@ -109,14 +109,23 @@
           </template>
 
           <template v-slot:item.actions="{ item }">
-            <v-btn
-              v-if="item.id"
-              icon="mdi-delete"
-              variant="text"
-              color="error"
-              size="small"
-              @click="deleteExpense(item.id)"
-            ></v-btn>
+            <div class="d-flex justify-end ga-2">
+              <v-btn
+                icon="mdi-pencil"
+                variant="text"
+                color="primary"
+                size="small"
+                @click="openEditDialog(item)"
+              ></v-btn>
+              <v-btn
+                v-if="item.id"
+                icon="mdi-delete"
+                variant="text"
+                color="error"
+                size="small"
+                @click="deleteExpense(item.id)"
+              ></v-btn>
+            </div>
           </template>
         </v-data-table>
       </v-card-text>
@@ -124,6 +133,7 @@
 
     <ExpenseFormDialog
       v-model="dialog"
+      :edit-data="editData"
       @save="handleSave"
     />
   </div>
@@ -141,6 +151,8 @@ const livestockStore = useLivestockStore()
 
 const search = ref('')
 const dialog = ref(false)
+const editData = ref<{ expense: Expense, animalIds: string[] } | null>(null)
+const saving = ref(false)
 
 const headers = [
   { title: 'Fecha', key: 'date', sortable: true },
@@ -190,13 +202,42 @@ const getAnimalLabel = (id: string) => {
   return animal ? `${animal.number}` : '?'
 }
 
+const openNewDialog = () => {
+  editData.value = null
+  dialog.value = true
+}
+
+const openEditDialog = (item: any) => {
+  // Extract essential expense data without associations for the form
+  const { associations, ...expense } = item
+  editData.value = {
+    expense,
+    animalIds: associations.map((a: any) => a.animal_id)
+  }
+  dialog.value = true
+}
+
 const handleSave = async ({ expense, animalIds }: { expense: Expense, animalIds: string[] }) => {
-  await expensesStore.addExpense(expense, animalIds)
+  saving.value = true;
+  try {
+    if (expense.id) {
+      await expensesStore.updateExpense(expense.id, expense, animalIds)
+    } else {
+      await expensesStore.addExpense(expense, animalIds)
+    }
+  } finally {
+    saving.value = false;
+  }
 }
 
 const deleteExpense = async (id: string) => {
   if (confirm('¿Estás seguro de eliminar este gasto?')) {
-    await expensesStore.deleteExpense(id)
+    saving.value = true;
+    try {
+      await expensesStore.deleteExpense(id)
+    } finally {
+      saving.value = false;
+    }
   }
 }
 </script>

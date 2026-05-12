@@ -304,6 +304,8 @@ import { useRoute, useRouter } from 'vue-router';
 import { useLivestockStore } from '../stores/livestock';
 import { useBreedsStore } from '../stores/breeds';
 import { useContactsStore } from '../stores/contacts';
+import { useExpensesStore } from '../stores/expenses';
+import { syncAnimalExpenses } from '../utils/expenseSync';
 import type { Animal } from '../types';
 import AnimalFormDialog from '../components/AnimalFormDialog.vue';
 
@@ -336,6 +338,7 @@ const router = useRouter();
 const livestockStore = useLivestockStore();
 const breedsStore = useBreedsStore();
 const contactsStore = useContactsStore();
+const expensesStore = useExpensesStore();
 
 const editDialog = ref(false);
 const formData = ref<Animal | null>(null);
@@ -346,6 +349,8 @@ onMounted(() => {
   }
   breedsStore.loadBreeds();
   contactsStore.loadContacts();
+  expensesStore.loadExpenses();
+  expensesStore.loadAssociations();
 });
 
 const animal = computed(() => {
@@ -373,6 +378,7 @@ const openEditDialog = () => {
 const handleSave = async (data: Animal) => {
   if (data.id) {
     await livestockStore.updateAnimal(data.id, data);
+    await syncAnimalExpenses(data.id.toString(), data);
     editDialog.value = false;
   }
 };
