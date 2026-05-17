@@ -97,6 +97,7 @@ const cattleKpis = computed(() => {
     { title: 'Edad Prom. Venta', value: avgAgeVenta, icon: 'mdi-cash-check', color: 'text-indigo', iconColor: 'indigo' },
     { title: 'Tasa Mortalidad', value: mortalityRate, icon: 'mdi-skull-outline', color: 'text-deep-orange', iconColor: 'deep-orange' },
     { title: 'Tiempo Prom. Finca', value: avgStay, icon: 'mdi-clock-outline', color: 'text-teal', iconColor: 'teal' },
+    { title: 'Etapa Potrero', value: animals.filter(a => a.status === 'Activo' && a.feeding_stage === 'Potrero').length, icon: 'mdi-grass', color: 'text-light-green-darken-2', iconColor: 'light-green-darken-2' },
     { title: 'Raza Dominante', value: getDominantBreed(animals), icon: 'mdi-dna', color: 'text-purple', iconColor: 'purple' },
     { title: 'Hembras Activas', value: activeFemales(animals), icon: 'mdi-gender-female', color: 'text-pink', iconColor: 'pink' },
   ]

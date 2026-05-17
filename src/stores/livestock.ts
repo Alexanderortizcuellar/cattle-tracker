@@ -26,6 +26,7 @@ export const useLivestockStore = defineStore('livestock', () => {
     status: '',
     feedingStage: '',
     ageRange: '' as string,
+    acquisitionType: '',
     showFilters: false,
     viewMode: 'grid' as 'grid' | 'table'
   })

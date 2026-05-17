@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte Avanzado de Ganadería</title>
+    <!-- Tailwind for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js for visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- html2pdf for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        @media print {
+            .no-print { display: none; }
+            .page-break { page-break-before: always; }
+        }
+        .chart-container { position: relative; height: 300px; width: 100%; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen pb-12">
+
+    <!-- Header / Control Panel -->
+    <div class="bg-white shadow-md p-6 no-print mb-8">
+        <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">Generador de Reportes Ganaderos</h1>
+                <p class="text-gray-600">Importa tu archivo JSON para generar el reporte</p>
+            </div>
+            <div class="flex gap-4">
+                <input type="file" id="fileInput" accept=".json" class="hidden">
+                <button onclick="document.getElementById('fileInput').click()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition">
+                    Importar JSON
+                </button>
+                <button onclick="exportToPDF()" id="exportBtn" disabled class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed">
+                    Exportar a PDF
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Content -->
+    <div id="reportContent" class="max-w-6xl mx-auto px-4 hidden">
+        
+        <!-- KPI Row -->
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+            <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-blue-500">
+                <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">Total</p>
+                <h2 id="kpiTotal" class="text-2xl font-bold text-gray-800">-</h2>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-green-500">
+                <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">Activos</p>
+                <h2 id="kpiActive" class="text-2xl font-bold text-green-600">-</h2>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-blue-400">
+                <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">Vendidos</p>
+                <h2 id="kpiSold" class="text-2xl font-bold text-blue-600">-</h2>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-orange-500">
+                <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">Potrero</p>
+                <h2 id="kpiPotrero" class="text-2xl font-bold text-orange-600">-</h2>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-red-500">
+                <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">Mortalidad</p>
+                <h2 id="kpiMortality" class="text-2xl font-bold text-red-600">-</h2>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+            <div class="bg-white p-6 rounded-xl shadow-sm">
+                <h3 class="text-lg font-bold mb-4 text-gray-700">Distribución por Raza</h3>
+                <div class="chart-container">
+                    <canvas id="breedChart"></canvas>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-sm">
+                <h3 class="text-lg font-bold mb-4 text-gray-700">Estado de Alimentación</h3>
+                <div class="chart-container">
+                    <canvas id="stageChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mothers Table Section -->
+        <div id="mothersSection" class="bg-white rounded-xl shadow-sm overflow-hidden mb-8 border-t-4 border-pink-500">
+            <div class="bg-pink-50 px-6 py-4 border-b">
+                <h3 class="text-lg font-bold text-pink-800">Desempeño de Madres</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead class="bg-pink-50 text-xs font-bold text-pink-700 uppercase">
+                        <tr>
+                            <th class="px-6 py-3">Madre</th>
+                            <th class="px-6 py-3">Total Crías</th>
+                            <th class="px-6 py-3 text-red-600">Crías Muertas</th>
+                            <th class="px-6 py-3">Estado Actual</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mothersTableBody" class="divide-y divide-pink-100 text-sm text-gray-700">
+                        <!-- Content here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Active Animals Table -->
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-8 border-t-4 border-green-500">
+            <div class="bg-green-50 px-6 py-4 border-b">
+                <h3 class="text-lg font-bold text-green-800">Animales Activos en Inventario</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead class="bg-green-50 text-xs font-bold text-green-700 uppercase">
+                        <tr>
+                            <th class="px-6 py-3">ID / Nombre</th>
+                            <th class="px-6 py-3">Sexo</th>
+                            <th class="px-6 py-3">Edad</th>
+                            <th class="px-6 py-3">Etapa</th>
+                            <th class="px-6 py-3 text-right">Inversión</th>
+                        </tr>
+                    </thead>
+                    <tbody id="activeTableBody" class="divide-y divide-green-100 text-sm">
+                        <!-- Content here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="page-break"></div>
+
+        <!-- Sold Animals Section -->
+        <div id="soldSection" class="bg-white rounded-xl shadow-sm overflow-hidden mb-8 border-t-4 border-blue-500">
+            <div class="bg-blue-50 px-6 py-4 border-b flex justify-between items-center">
+                <h3 class="text-lg font-bold text-blue-800">Histórico de Ventas</h3>
+                <span id="soldCount" class="bg-blue-200 text-blue-800 px-3 py-1 rounded-full text-xs font-bold"></span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead class="bg-blue-50 text-xs font-bold text-blue-700 uppercase">
+                        <tr>
+                            <th class="px-6 py-3">Animal</th>
+                            <th class="px-6 py-3">Fecha Venta</th>
+                            <th class="px-6 py-3 text-right">Precio Venta</th>
+                            <th class="px-6 py-3 text-right">Inversión</th>
+                            <th class="px-6 py-3 text-right">Margen</th>
+                        </tr>
+                    </thead>
+                    <tbody id="soldTableBody" class="divide-y divide-blue-100 text-sm">
+                        <!-- Content here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Deaths Section -->
+        <div id="deathSection" class="bg-white rounded-xl shadow-sm overflow-hidden mb-8 border-t-4 border-red-500">
+            <div class="bg-red-50 px-6 py-4 border-b flex justify-between items-center">
+                <h3 class="text-lg font-bold text-red-800">Reporte de Mortalidad (Bajas)</h3>
+                <span id="deathCount" class="bg-red-200 text-red-800 px-3 py-1 rounded-full text-xs font-bold"></span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead class="bg-red-50 text-xs font-bold text-red-700 uppercase">
+                        <tr>
+                            <th class="px-6 py-3">Animal</th>
+                            <th class="px-6 py-3">Fecha Muerte</th>
+                            <th class="px-6 py-3">Causa de Muerte</th>
+                            <th class="px-6 py-3">Notas</th>
+                        </tr>
+                    </thead>
+                    <tbody id="deathTableBody" class="divide-y divide-red-100 text-sm">
+                        <!-- Content here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Empty State -->
+    <div id="emptyState" class="max-w-2xl mx-auto mt-20 text-center px-4">
+        <div class="bg-white p-12 rounded-2xl shadow-sm">
+            <svg class="w-20 h-20 text-gray-300 mx-auto mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            <h2 class="text-2xl font-bold text-gray-700 mb-2">Sin datos cargados</h2>
+            <p class="text-gray-500">Importa un archivo JSON de exportación para generar el reporte visual.</p>
+        </div>
+    </div>
+
+    <script>
+        let animalData = [];
+        let breedChart, stageChart;
+
+        document.getElementById('fileInput').addEventListener('change', handleFile);
+
+        function handleFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    animalData = Array.isArray(data) ? data : (data.animals || []);
+                    processData();
+                    
+                    document.getElementById('emptyState').classList.add('hidden');
+                    document.getElementById('reportContent').classList.remove('hidden');
+                    document.getElementById('exportBtn').disabled = false;
+                } catch (err) {
+                    alert('Error al procesar el archivo JSON: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function calculateAge(dob) {
+            if (!dob) return '-';
+            const d = new Date(dob);
+            const now = new Date();
+            let y = now.getFullYear() - d.getFullYear();
+            let m = now.getMonth() - d.getMonth();
+            if (m < 0) { y--; m += 12; }
+            return y > 0 ? `${y}a ${m}m` : `${m}m`;
+        }
+
+        function processData() {
+            const kpiTotal = animalData.length;
+            const activeAnimals = animalData.filter(a => a.status === 'Activo');
+            const deadAnimals = animalData.filter(a => a.status === 'Muerto');
+            const soldAnimals = animalData.filter(a => a.status === 'Vendido');
+            const potreroAnimals = activeAnimals.filter(a => a.feeding_stage === 'Potrero');
+            const mortalityRate = kpiTotal > 0 ? ((deadAnimals.length / kpiTotal) * 100).toFixed(1) : 0;
+
+            // Update KPIs
+            document.getElementById('kpiTotal').textContent = kpiTotal;
+            document.getElementById('kpiActive').textContent = activeAnimals.length;
+            document.getElementById('kpiSold').textContent = soldAnimals.length;
+            document.getElementById('kpiPotrero').textContent = potreroAnimals.length;
+            document.getElementById('kpiMortality').textContent = mortalityRate + '%';
+
+            // Populate Tables
+            renderTables(activeAnimals, soldAnimals, deadAnimals);
+
+            // Render Charts
+            renderCharts(animalData);
+        }
+
+        function renderTables(active, sold, dead) {
+            // Render Active Animals
+            const activeBody = document.getElementById('activeTableBody');
+            activeBody.innerHTML = active.map(a => `
+                <tr class="hover:bg-green-50/50 transition border-b border-gray-100">
+                    <td class="px-6 py-4">
+                        <div class="font-bold text-gray-800">${a.name || 'Sin nombre'}</div>
+                        <div class="text-xs text-gray-400">#${a.number} • ${a.mark}</div>
+                    </td>
+                    <td class="px-6 py-4 text-gray-700">${a.sex}</td>
+                    <td class="px-6 py-4 text-gray-600">${calculateAge(a.date_of_birth)}</td>
+                    <td class="px-6 py-4">
+                        <span class="px-2 py-1 rounded text-xs font-medium ${a.feeding_stage === 'Potrero' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}">
+                            ${a.feeding_stage || 'N/A'}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-right font-medium text-gray-800">$${(a.acquisition_price || 0).toLocaleString()}</td>
+                </tr>
+            `).join('');
+
+            // Render Sold Animals
+            const soldBody = document.getElementById('soldTableBody');
+            document.getElementById('soldCount').textContent = sold.length + ' Ventas';
+            if (sold.length === 0) {
+                soldBody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-gray-400 italic">No hay registros de ventas.</td></tr>';
+            } else {
+                soldBody.innerHTML = sold.map(a => {
+                    const price = a.sale_price || 0;
+                    const cost = a.acquisition_price || 0;
+                    const margin = price - cost;
+                    return `
+                        <tr class="hover:bg-blue-50/50 transition border-b border-gray-100">
+                            <td class="px-6 py-4">
+                                <div class="font-bold text-gray-800">${a.name || a.number}</div>
+                                <div class="text-xs text-gray-400">#${a.number}</div>
+                            </td>
+                            <td class="px-6 py-4 text-gray-700">${a.sale_date || '-'}</td>
+                            <td class="px-6 py-4 text-right text-green-700 font-bold">$${price.toLocaleString()}</td>
+                            <td class="px-6 py-4 text-right text-gray-600">$${cost.toLocaleString()}</td>
+                            <td class="px-6 py-4 text-right ${margin >= 0 ? 'text-green-700' : 'text-red-700'} font-bold">$${margin.toLocaleString()}</td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            // Render Death Report
+            const deathBody = document.getElementById('deathTableBody');
+            document.getElementById('deathCount').textContent = dead.length + ' Casos';
+            if (dead.length === 0) {
+                deathBody.innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-gray-400 italic">No hay registros de mortalidad.</td></tr>';
+            } else {
+                deathBody.innerHTML = dead.map(a => `
+                    <tr class="hover:bg-red-50/50 transition border-b border-gray-100">
+                        <td class="px-6 py-4 font-bold text-red-900">${a.name || a.number}</td>
+                        <td class="px-6 py-4 text-red-700">${a.death_date || '-'}</td>
+                        <td class="px-6 py-4 font-medium text-red-800">${a.death_reason || 'No especificada'}</td>
+                        <td class="px-6 py-4 text-gray-500 italic text-xs">${a.notes || '-'}</td>
+                    </tr>
+                `).join('');
+            }
+
+            // Render Mothers Table
+            const mothersBody = document.getElementById('mothersTableBody');
+            const females = animalData.filter(a => a.sex === 'Hembra');
+            const mothers = females.map(m => {
+                const allOffspring = animalData.filter(child => child.motherId === m.id);
+                const deadOffspring = allOffspring.filter(child => child.status === 'Muerto');
+                return { 
+                    ...m, 
+                    offspringCount: allOffspring.length,
+                    deadOffspringCount: deadOffspring.length
+                };
+            }).filter(m => m.offspringCount > 0)
+              .sort((a, b) => b.offspringCount - a.offspringCount);
+
+            if (mothers.length === 0) {
+                mothersBody.innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-gray-400 italic">No se identificaron madres con crías.</td></tr>';
+            } else {
+                mothersBody.innerHTML = mothers.map(m => `
+                    <tr class="hover:bg-pink-50/50 transition border-b border-gray-100">
+                        <td class="px-6 py-4">
+                            <div class="font-bold text-pink-900">${m.name || 'Sin nombre'}</div>
+                            <div class="text-xs text-pink-400">#${m.number}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="bg-pink-200 text-pink-800 px-3 py-1 rounded-full text-xs font-bold">${m.offspringCount} Crías</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="text-red-600 font-bold">${m.deadOffspringCount > 0 ? m.deadOffspringCount : '0'}</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-1 rounded-full text-xs font-bold ${getStatusStyle(m.status)}">${m.status}</span>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        function getStatusStyle(status) {
+            switch(status) {
+                case 'Activo': return 'bg-green-100 text-green-700';
+                case 'Vendido': return 'bg-blue-100 text-blue-700';
+                case 'Muerto': return 'bg-red-100 text-red-700';
+                default: return 'bg-gray-100 text-gray-700';
+            }
+        }
+
+        function renderCharts(data) {
+            const breedCounts = {};
+            data.forEach(a => breedCounts[a.breed] = (breedCounts[a.breed] || 0) + 1);
+            if (breedChart) breedChart.destroy();
+            breedChart = new Chart(document.getElementById('breedChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(breedCounts),
+                    datasets: [{
+                        data: Object.values(breedCounts),
+                        backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899']
+                    }]
+                },
+                options: { maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+            });
+
+            const active = data.filter(a => a.status === 'Activo');
+            const stageCounts = { 'Potrero': 0, 'Leche': 0, 'Otros/Ninguno': 0 };
+            active.forEach(a => {
+                if (a.feeding_stage === 'Potrero') stageCounts['Potrero']++;
+                else if (a.feeding_stage === 'Leche') stageCounts['Leche']++;
+                else stageCounts['Otros/Ninguno']++;
+            });
+            if (stageChart) stageChart.destroy();
+            stageChart = new Chart(document.getElementById('stageChart'), {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(stageCounts),
+                    datasets: [{
+                        label: 'Animales',
+                        data: Object.values(stageCounts),
+                        backgroundColor: '#6366F1'
+                    }]
+                },
+                options: { maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+            });
+        }
+
+        function exportToPDF() {
+            const element = document.getElementById('reportContent');
+            const opt = {
+                margin: 0.5,
+                filename: 'Reporte_Ganadero_' + new Date().toISOString().split('T')[0] + '.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+            html2pdf().set(opt).from(element).save();
+        }
+    </script>
+</body>
+</html>

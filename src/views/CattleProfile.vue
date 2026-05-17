@@ -44,6 +44,10 @@
                   <div class="text-subtitle-1 font-weight-bold">{{ animal.sex }}</div>
                 </v-col>
                 <v-col cols="6" sm="4">
+                  <div class="text-caption text-grey">Fecha Nacimiento</div>
+                  <div class="text-subtitle-1 font-weight-bold">{{ animal.date_of_birth }}</div>
+                </v-col>
+                <v-col cols="6" sm="4">
                   <div class="text-caption text-grey">Edad</div>
                   <div class="text-subtitle-1 font-weight-bold">{{ age }}</div>
                 </v-col>
@@ -59,7 +63,11 @@
                     {{ animal.status }}
                   </v-chip>
                 </v-col>
-                <v-col cols="12" sm="8" v-if="performanceIndicators.length > 0">
+                <v-col cols="6" sm="4" v-if="animal.status === 'Muerto'">
+                  <div class="text-caption text-grey">Causa de Muerte</div>
+                  <div class="text-subtitle-1 font-weight-bold text-error">{{ animal.death_reason || '-' }}</div>
+                </v-col>
+                <v-col cols="12" v-if="performanceIndicators.length > 0">
                   <div class="text-caption text-grey mb-1">Indicadores Clave</div>
                   <div class="d-flex flex-wrap ga-2">
                     <v-tooltip
@@ -217,6 +225,15 @@
                   </div>
                 </div>
               </v-col>
+              <v-col cols="12" sm="4" v-if="animal.status === 'Muerto'">
+                <div class="text-caption text-grey text-error">Información de Muerte</div>
+                <div class="text-h5 font-weight-bold text-error">
+                  {{ animal.death_reason || 'Desconocida' }}
+                </div>
+                <div class="text-caption text-grey mt-1">
+                  Falleció el {{ animal.death_date || 'Fecha no registrada' }}
+                </div>
+              </v-col>
               <v-col cols="12" sm="4" v-if="animal.status === 'Vendido'">
                 <div class="text-caption text-grey">Margen / ROI</div>
                 <div class="text-h5 font-weight-bold" :class="financials.margin >= 0 ? 'text-success' : 'text-error'">
@@ -288,6 +305,7 @@
     <AnimalFormDialog
       v-model="editDialog"
       :animal="formData"
+      :loading="saving"
       @save="handleSave"
       @delete="handleDelete"
     />
@@ -342,6 +360,7 @@ const expensesStore = useExpensesStore();
 
 const editDialog = ref(false);
 const formData = ref<Animal | null>(null);
+const saving = ref(false);
 
 onMounted(() => {
   if (livestockStore.animals.length === 0) {
@@ -377,16 +396,26 @@ const openEditDialog = () => {
 
 const handleSave = async (data: Animal) => {
   if (data.id) {
-    await livestockStore.updateAnimal(data.id, data);
-    await syncAnimalExpenses(data.id.toString(), data);
-    editDialog.value = false;
+    saving.value = true;
+    try {
+      await livestockStore.updateAnimal(data.id, data);
+      await syncAnimalExpenses(data.id.toString(), data);
+      editDialog.value = false;
+    } finally {
+      saving.value = false;
+    }
   }
 };
 
 const handleDelete = async (id: string | number) => {
-  await livestockStore.deleteAnimal(id);
-  editDialog.value = false;
-  router.push('/livestock');
+  saving.value = true;
+  try {
+    await livestockStore.deleteAnimal(id);
+    editDialog.value = false;
+    router.push('/livestock');
+  } finally {
+    saving.value = false;
+  }
 };
 
 const offspring = computed(() => {

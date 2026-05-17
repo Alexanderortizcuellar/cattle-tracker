@@ -150,6 +150,18 @@
                   hide-details="auto"
                 />
               </v-col>
+              <v-col cols="12" sm="3">
+                <v-select
+                  v-model="livestockStore.filters.acquisitionType"
+                  label="Adquisición"
+                  :items="['Compra', 'Nacimiento', 'Donación', 'Negocio']"
+                  variant="outlined"
+                  density="compact"
+                  bg-color="white"
+                  clearable
+                  hide-details="auto"
+                />
+              </v-col>
             </v-row>
           </v-card-text>
         </div>
@@ -253,7 +265,6 @@
           <v-data-table
             :headers="tableHeaders"
             :items="filteredAnimals"
-            :search="livestockStore.filters.search"
             hover
             class="elevation-0"
             @click:row="navigateToProfile"
@@ -397,6 +408,8 @@ const filteredAnimals = computed(() => {
       return true;
     });
   }
+  if (f.acquisitionType)
+    animals = animals.filter((a) => a.acquisition_type === f.acquisitionType);
   if (f.search) {
     const q = f.search.toLowerCase();
     animals = animals.filter((a) =>
